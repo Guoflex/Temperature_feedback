@@ -1,0 +1,15 @@
+﻿# Local editor settings
+/.vscode/
+/.idea/
+# Local credentials
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+# Host metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

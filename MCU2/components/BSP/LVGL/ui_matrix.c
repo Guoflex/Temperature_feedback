@@ -1,0 +1,246 @@
+#include "lvgl.h"
+#include "ui_matrix.h"
+#include <stdio.h>
+
+#if CHANNEL_NUM == 16
+#define POINT_NUM 16
+#elif CHANNEL_NUM == 29
+#define POINT_NUM 29
+#else
+#error "Unsupported CHANNEL_NUM"
+#endif
+
+// 阵点网格坐标 (gx, gy) 及对应数据通道号
+// gx: -1~4, gy: -3~3, cell = 20px (16px圆点 + 4px间距)
+// 通道 20,21,22 未使用
+typedef struct {
+    uint8_t ch;   // data[] 中的索引
+    float gx;     // 网格 x（支持小数，eg. 0.5 = 半格）
+    float gy;     // 网格 y
+} point_def_t;
+
+// ================================================================
+//  左手阵点布局 (已调试完毕)
+// ================================================================
+#if CHANNEL_NUM == 16
+static const point_def_t points[POINT_NUM] = {
+    { 0,  0,  0},  {12,  1,  0},  {19,  2,  0},  {27,  3,  0},
+    { 2,  0,  1},  {14,  1,  1},  {17,  2,  1},  {25,  3,  1},
+    { 4,  0,  2},  { 8,  1,  2},  {31,  2,  2},  {23,  3,  2},
+    { 6,  0,  3},  {10,  1,  3},  {29,  2,  3},  {21,  3,  3},
+};
+#elif CHANNEL_NUM == 29
+#ifndef HAND_RIGHT
+static const point_def_t points[POINT_NUM] = {
+
+    // ============================================================
+    //  手掌 (4×4 方形网格) — 不动
+    // ============================================================
+    // gy=0: 手掌顶行
+    { 2,  0,  0},  {15,  1,  0},  {19,  2,  0},  {28,  3,  0},
+    // gy=1
+    { 3,  0,  1},  { 8,  1,  1},  {18,  2,  1},  {27,  3,  1},
+    // gy=2
+    { 4,  0,  2},  { 9,  1,  2},  {17,  2,  2},  {26,  3,  2},
+    // gy=3: 手掌底行
+    { 5,  0,  3},  {10,  1,  3},  {16,  2,  3},  {25,  3,  3},
+
+    // ============================================================
+    //  拇指 (左侧)
+    // ============================================================
+    { 7, -3.3f,  0},
+    { 6, -2.2f,  1},
+
+    // ============================================================
+    //  食指 (指尖→指根, 连接 ch2)
+    // ============================================================
+    { 1,  -1, -4.7f},
+    { 0,  -0.8f, -3.15f},
+    {11,  -0.6f, -1.9f},
+
+    // ============================================================
+    //  中指 (指尖→指根, 连接 ch15)
+    // ============================================================
+    {14,  1.35f, -5.55f},
+    {13,  1.15f, -3.85f},
+    {12,  1.1f, -2.45f},
+
+    // ============================================================
+    //  无名指 (指尖→指根, 连接 ch28)
+    // ============================================================
+    {31,  2.95f, -4.7f},
+    {30,  2.65f, -3.2f},
+    {29,  2.5f, -2},
+
+    // ============================================================
+    //  小指侧 (右下)
+    // ============================================================
+    {23,  4.8f,  -3},
+    {24,  4.4f,  -1.5f},
+};
+
+// ================================================================
+//  右手阵点布局 (gx 已镜像, 通道号待手动调整)
+// ================================================================
+#else
+static const point_def_t points[POINT_NUM] = {
+
+    // ============================================================
+    //  手掌 (4×4 方形网格, gx 镜像: 0↔3, 1↔2)
+    // ============================================================ 
+    // gy=0: 手掌顶行
+    { 25,  3,  0},  {16,  2,  0},  {12,  1,  0},  {11,  0,  0},
+    // gy=1
+    { 24,  3,  1},  { 31,  2,  1},  {13,  1,  1},  {0,  0,  1}, 
+    // gy=2
+    { 23,  3,  2},  { 30,  2,  2},  {14,  1,  2},  {1,  0,  2},
+    // gy=3: 手掌底行
+    { 22,  3,  3},  {29,  2,  3},  {15,  1,  3},  {2,  0,  3},
+
+    // ============================================================
+    //  拇指 (右侧, 原左手拇指 gx=-3.3/-2.2 镜像后)
+    // ============================================================
+    { 20,  6.3f,  0},
+    { 21,  5.2f,  1},
+
+    // ============================================================
+    //  食指 (右侧, 原左手食指 gx=-1/-0.8/-0.6 镜像后)
+    // ============================================================
+    { 26,  4.0f, -4.7f},
+    { 27,  3.8f, -3.15f},
+    { 28,  3.6f, -1.9f},
+
+    // ============================================================
+    //  中指 (原左手 gx=1.35/1.15/1.1 镜像后)
+    // ============================================================
+    {17,  1.65f, -5.55f},
+    {18,  1.85f, -3.85f},
+    {19,  1.9f, -2.45f},
+
+    // ============================================================
+    //  无名指 (原左手 gx=2.95/2.65/2.5 镜像后)
+    // ============================================================
+    { 8,  0.05f, -4.7f},
+    { 9,  0.35f, -3.2f},
+    {10,  0.5f, -2},
+
+    // ============================================================
+    //  小指侧 (左侧, 原左手 gx=4.8/4.4 镜像后)
+    // ============================================================
+    {4, -1.8f,  -3},
+    {3, -1.4f,  -1.5f},
+};
+#endif
+#endif
+
+static lv_obj_t *cells[POINT_NUM];
+
+static lv_color_t heatmap_color(uint8_t intensity)
+{
+    float t = intensity / 255.0f;
+
+    // 从 #F5E5E5 (浅粉) 渐变到 #FF0000 (正红)
+    uint8_t r = (uint8_t)(245 + t * 10);
+    uint8_t g = (uint8_t)(229 * (1.0f - t));
+    uint8_t b = (uint8_t)(229 * (1.0f - t));
+
+    return lv_color_make(r, g, b);
+}
+
+void ui_matrix_create(void)
+{
+    int dot_diameter = 16;
+    int dot_spacing = 4;
+    int cell = dot_diameter + dot_spacing; // 20px
+
+    // 网格范围: gx=-1..4 (6列), gy=-3..3 (7行)
+    int cols = 6;
+    int rows = 7;
+    int full_grid_w = cols * cell - dot_spacing; // 6*20-4 = 116
+    int full_grid_h = rows * cell - dot_spacing; // 7*20-4 = 136
+#if CHANNEL_NUM == 16
+    int grid_w = 4 * cell - dot_spacing;
+    int grid_h = 4 * cell - dot_spacing;
+#else
+    int grid_w = full_grid_w;
+    int grid_h = full_grid_h;
+#endif
+
+    int origin_x = (240 - full_grid_w) / 2
+#if CHANNEL_NUM == 16
+                   + cell
+#ifdef HAND_RIGHT
+                   - 20
+#else
+                   + 20
+#endif
+                   + UI_MATRIX_16_X_OFFSET;
+#else
+#ifdef HAND_RIGHT
+                   - 20;   // 右手：左移为右侧拇指留空间
+#else
+                   + 20;   // 左手：右移为左侧拇指留空间
+#endif
+#endif
+    int origin_y = (280 - full_grid_h) / 2
+#if CHANNEL_NUM == 16
+                   + 3 * cell + UI_MATRIX_16_Y_OFFSET;
+#else
+                   ;
+#endif
+#if CHANNEL_NUM == 16
+    int min_gx = 0;
+    int min_gy = 0;
+#else
+    int min_gx = -1;
+    int min_gy = -3;
+#endif
+
+    lv_obj_t *screen = lv_scr_act();
+
+    for (int i = 0; i < POINT_NUM; i++) {
+        lv_obj_t *obj = lv_obj_create(screen);
+
+        int pos_x = origin_x + (int)((points[i].gx - min_gx) * cell);
+        int pos_y = origin_y + (int)((points[i].gy - min_gy) * cell);
+
+        lv_obj_set_size(obj, dot_diameter, dot_diameter);
+        lv_obj_set_pos(obj, pos_x, pos_y);
+
+        lv_obj_set_style_radius(obj, dot_diameter / 2, 0);
+        lv_obj_set_style_bg_color(obj, lv_color_black(), 0);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_100, 0);
+        lv_obj_set_style_border_width(obj, 0, 0);
+        lv_obj_set_style_shadow_width(obj, 0, 0);
+        lv_obj_set_style_outline_width(obj, 0, 0);
+        lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
+
+        lv_obj_move_foreground(obj);
+
+        cells[i] = obj;
+    }
+
+    printf("Matrix UI created: %d points, grid %dx%d at (%d,%d)\r\n",
+           POINT_NUM, grid_w, grid_h, origin_x, origin_y);
+}
+
+#define VALUE_MIN  700.0f
+#define VALUE_MAX  800.0f
+
+void ui_matrix_update(float *data)
+{
+    for (int i = 0; i < POINT_NUM; i++) {
+        float val = data[points[i].ch];
+
+        uint8_t intensity;
+        if (val < VALUE_MIN)
+            intensity = 0;
+        else if (val > VALUE_MAX)
+            intensity = 255;
+        else
+            intensity = (uint8_t)((val - VALUE_MIN) / (VALUE_MAX - VALUE_MIN) * 255.0f);
+
+        lv_color_t color = heatmap_color(intensity);
+        lv_obj_set_style_bg_color(cells[i], color, 0);
+    }
+}

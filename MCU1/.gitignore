@@ -1,0 +1,38 @@
+# Keil generated output
+/MDK-ARM/project/
+/MDK-ARM/Objects/
+/MDK-ARM/Listings/
+*.o
+*.obj
+*.d
+*.crf
+*.axf
+*.hex
+*.bin
+*.map
+*.lst
+*.lnp
+*.dep
+*.build_log.htm
+# Personal IDE and debugger settings
+*.uvguix.*
+*.uvoptx
+/.vscode/
+/.mxproject
+/MDK-ARM/DebugConfig/
+/MDK-ARM/JLinkLog.txt
+/MDK-ARM/JLinkSettings.ini
+# Temporary files and credentials
+*.log
+*.tmp
+*.bak
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.DS_Store
+Thumbs.db
+Desktop.ini

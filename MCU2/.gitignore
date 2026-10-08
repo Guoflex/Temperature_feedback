@@ -1,0 +1,28 @@
+# Build outputs and downloaded dependencies
+/build/
+/managed_components/
+/sdkconfig.old
+# Local development metadata
+/.git/
+/.vscode/
+/.idea/
+/.understand-anything/
+/.clangd
+/compile_commands.json
+# Temporary files and local secrets
+*.log
+*.tmp
+*.bak
+*.swp
+*.swo
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+# Host metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

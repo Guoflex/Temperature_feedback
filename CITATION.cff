@@ -1,0 +1,19 @@
+﻿cff-version: 1.2.0
+message: "If you use this software, please cite it using the metadata in this file."
+type: software
+title: "Capacitive Tactile Sensing and Electrical Feedback"
+authors:
+  - family-names: "Dong"
+    given-names: "Shuai"
+abstract: >-
+  Firmware for a two-controller system that acquires 32 capacitive sensor
+  channels using an STM32G0B1, displays a hand heatmap on an ESP32-S3,
+  and controls electrical stimulation feedback.
+license: MIT
+keywords:
+  - capacitive sensing
+  - tactile sensing
+  - electrical stimulation
+  - STM32
+  - ESP32-S3
+  - LVGL
